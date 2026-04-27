@@ -406,7 +406,12 @@ async function fetchAllowedChannel(id: string) {
   const ch = await fetchTextChannel(id)
   const access = loadAccess()
   if (ch.type === ChannelType.DM) {
-    const userId = ch.recipientId ?? dmChannelUsers.get(id)
+    // dmChannelUsers is populated from msg.author.id on inbound DMs (verified
+    // sender). ch.recipientId on a REST-fetched partial DMChannel can resolve
+    // to the bot's own user ID rather than the human counterparty in
+    // discord.js v14, so prefer the verified map and fall back to recipientId
+    // only when no inbound has primed the map yet.
+    const userId = dmChannelUsers.get(id) ?? ch.recipientId
     if (userId && access.allowFrom.includes(userId)) return ch
   } else {
     const key = ch.isThread() ? ch.parentId ?? ch.id : ch.id
